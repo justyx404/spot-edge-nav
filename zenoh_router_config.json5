@@ -1,0 +1,301 @@
+/// Zenoh Router Configuration for Spot Robot Remote Operation
+///
+/// Based on: DEFAULT_RMW_ZENOH_ROUTER_CONFIG.json5 (humble branch)
+/// with downsampling rules added for low-latency remote RVIZ over WiFi.
+///
+/// Usage: export ZENOH_ROUTER_CONFIG_URI=/path/to/zenoh_router_config.json5
+///        ros2 run rmw_zenoh_cpp rmw_zenohd
+{
+  mode: "router",
+
+  connect: {
+    timeout_ms: { router: -1, peer: -1, client: 0 },
+    endpoints: [],
+    exit_on_failure: { router: false, peer: false, client: true },
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2,
+    },
+  },
+
+  listen: {
+    timeout_ms: 0,
+    endpoints: ["tcp/[::]:7447"],
+    exit_on_failure: true,
+    retry: {
+      period_init_ms: 1000,
+      period_max_ms: 4000,
+      period_increase_factor: 2,
+    },
+  },
+
+  open: {
+    return_conditions: {
+      connect_scouted: true,
+      declares: true,
+    },
+  },
+
+  scouting: {
+    timeout: 3000,
+    delay: 500,
+    multicast: {
+      enabled: false,
+      address: "224.0.0.224:7446",
+      interface: "auto",
+      ttl: 1,
+      autoconnect: { router: [], peer: ["router", "peer"], client: ["router"] },
+      autoconnect_strategy: { router: { to_router: "always", to_peer: "always" } },
+      listen: true,
+    },
+    gossip: {
+      enabled: true,
+      multihop: false,
+      target: { router: ["router", "peer"], peer: ["router"]},
+      autoconnect: { router: [], peer: ["router", "peer"] },
+      autoconnect_strategy: { router: { to_router: "always", to_peer: "always" } },
+    },
+  },
+
+  timestamping: {
+    enabled: { router: true, peer: true, client: true },
+    drop_future_timestamp: false,
+  },
+
+  queries_default_timeout: 600000,
+
+  routing: {
+    router: {
+      peers_failover_brokering: false,
+    },
+    peer: {
+      mode: "peer_to_peer",
+    },
+    interests: {
+      timeout: 10000,
+    },
+  },
+
+  /// =========================================================================
+  /// DOWNSAMPLING — Throttle heavy topics before sending to remote client
+  /// =========================================================================
+  /// ROS 2 topics map to Zenoh key expressions with various prefixes:
+  ///   pub/sub:  <admin_space>/<zid>/<topic_encoded>
+  /// The "rt/" prefix is used but the full key expr includes more segments.
+  /// Zenoh key expression wildcards (**) will match all sub-paths.
+  ///
+  /// Only egress (outbound to client) is filtered; on-robot communication
+  /// is unaffected since local peers use shared memory / loopback transport.
+  /// =========================================================================
+  downsampling: [
+    // --- HEAVY POINTCLOUDS: Block on-robot-only clouds ---
+    // These are consumed only by on-robot nodes (NDT, terrain_processor)
+    // and NOT visualized in remote RVIZ.
+    {
+      id: "block_internal_clouds",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/cloud_registered/**", freq: 0.1 },
+        { key_expr: "**/rt/cloud_registered_body/**", freq: 0.1 },
+        { key_expr: "**/rt/velodyne_points/**", freq: 0.1 },
+      ],
+    },
+
+    // --- TERRAIN CLOUD: Needed for initial pose in RVIZ, downsample to 2 Hz ---
+    {
+      id: "downsample_terrain",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/terrain_cloud/**", freq: 2.0 },
+      ],
+    },
+
+    // --- CAMERAS & THERMAL: Keep at 1 Hz for occasional visual check ---
+    {
+      id: "downsample_cameras",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/camera/**", freq: 1.0 },
+        { key_expr: "**/rt/thermal/**", freq: 1.0 },
+      ],
+    },
+
+    // --- FAR PLANNER DEBUG CLOUDS: Block (on-robot debug only) ---
+    {
+      id: "block_far_debug",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/FAR_dynamic_obs_debug/**", freq: 0.1 },
+        { key_expr: "**/rt/FAR_free_debug/**", freq: 0.1 },
+        { key_expr: "**/rt/FAR_obs_debug/**", freq: 0.1 },
+        { key_expr: "**/rt/FAR_scanGrid_debug/**", freq: 0.1 },
+        { key_expr: "**/rt/FAR_new_debug/**", freq: 0.1 },
+        { key_expr: "**/rt/FAR_terrain_height_debug/**", freq: 0.1 },
+      ],
+    },
+
+    // --- FAR PLANNER VISUALIZATION MARKERS: Downsample to 0.5 Hz ---
+    // Graph/contour/polygon visualizations — useful in RVIZ but can be heavy
+    {
+      id: "downsample_far_viz",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/viz_graph_topic/**", freq: 0.5 },
+        { key_expr: "**/rt/viz_contour_topic/**", freq: 0.5 },
+        { key_expr: "**/rt/viz_poly_topic/**", freq: 0.5 },
+        { key_expr: "**/rt/viz_node_topic/**", freq: 0.5 },
+        { key_expr: "**/rt/viz_grid_map_topic/**", freq: 0.5 },
+        { key_expr: "**/rt/viz_viewpoint_extend_topic/**", freq: 0.5 },
+      ],
+    },
+
+    // --- INTERNAL DIAGNOSTICS: Block (not needed remotely) ---
+    {
+      id: "block_diagnostics",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/runtime/**", freq: 0.1 },
+        { key_expr: "**/rt/planning_time/**", freq: 0.1 },
+        { key_expr: "**/rt/far_traverse_time/**", freq: 0.1 },
+        { key_expr: "**/rt/robot_vgraph/**", freq: 0.1 },
+        { key_expr: "**/rt/way_point/**", freq: 0.1 },
+        { key_expr: "**/rt/navigation_boundary/**", freq: 0.1 },
+      ],
+    },
+
+    // --- IMU: Block (consumed only by FAST-LIO on robot, 100-200 Hz!) ---
+    {
+      id: "block_imu",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/imu/**", freq: 0.1 },
+      ],
+    },
+  ],
+
+  /// =========================================================================
+  /// TOPICS THAT PASS THROUGH AT FULL RATE (no rules needed — small & critical):
+  ///   /tf, /tf_static        — frame transforms (critical for RVIZ)
+  ///   /odometry_map          — robot pose (10 Hz, ~7 KB/s)
+  ///   /far_path              — planned path (2.5 Hz, tiny)
+  ///   /cmd_vel               — velocity commands (tiny)
+  ///   /goal_pose             — user navigation goal (event-driven)
+  ///   /initialpose           — user initial pose (event-driven)
+  ///   /goal_markers          — static goal markers (1 Hz, small)
+  ///   /global_map            — static PCD map (published once, latched)
+  ///   /graph_decoder_viz     — prior map viz (event-driven)
+  ///   /far_reach_goal_status — goal reached status (tiny)
+  ///   /viz_path_topic        — path line strip (2.5 Hz, tiny)
+  ///   /decoded_vgraph        — graph decoder event (event-driven)
+  ///   /read_file_dir         — prior map load trigger (event-driven)
+  /// =========================================================================
+
+  transport: {
+    unicast: {
+      open_timeout: 60000,
+      accept_timeout: 60000,
+      accept_pending: 10000,
+      max_sessions: 10000,
+      max_links: 1,
+      lowlatency: false,
+      qos: { enabled: true },
+      compression: { enabled: false },
+    },
+    multicast: {
+      join_interval: 2500,
+      max_sessions: 1000,
+      qos: { enabled: false },
+      compression: { enabled: false },
+    },
+    link: {
+      tx: {
+        sequence_number_resolution: "32bit",
+        lease: 60000,
+        keep_alive: 2,
+        batch_size: 65535,
+        queue: {
+          size: {
+            control: 2,
+            real_time: 2,
+            interactive_high: 2,
+            interactive_low: 2,
+            data_high: 2,
+            data: 2,
+            data_low: 2,
+            background: 2,
+          },
+          congestion_control: {
+            drop: {
+              wait_before_drop: 1000,
+              max_wait_before_drop_fragments: 50000,
+            },
+            block: {
+              wait_before_close: 5000000,
+            },
+          },
+          batching: {
+            enabled: true,
+            time_limit: 1,
+          },
+          allocation: {
+            mode: "lazy",
+          },
+        },
+      },
+      rx: {
+        buffer_size: 65535,
+        max_message_size: 1073741824,
+      },
+      tls: {
+        root_ca_certificate: null,
+        listen_private_key: null,
+        listen_certificate: null,
+        enable_mtls: false,
+        connect_private_key: null,
+        connect_certificate: null,
+        verify_name_on_connect: true,
+        close_link_on_expiration: false,
+      },
+    },
+    shared_memory: {
+      enabled: false,
+      mode: "lazy",
+      transport_optimization: {
+        enabled: true,
+        pool_size: 50331648,
+        message_size_threshold: 512,
+      },
+    },
+    auth: {
+      usrpwd: {
+        user: null,
+        password: null,
+        dictionary_file: null,
+      },
+      pubkey: {
+        public_key_pem: null,
+        private_key_pem: null,
+        public_key_file: null,
+        private_key_file: null,
+        key_size: null,
+        known_keys_file: null,
+      },
+    },
+  },
+
+  adminspace: {
+    enabled: true,
+    permissions: {
+      read: true,
+      write: false,
+    },
+  },
+}

@@ -1,0 +1,37 @@
+# ROS 2 colcon build artifacts
+build/
+install/
+log/
+
+# Rosbag recordings and map data
+*.db3
+*.mcap
+*.bag
+mine_nav*/
+mine_map*/
+
+# PCD map files (large)
+*.pcd
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Excluded packages (not tracked as submodules for now)
+src/elevation_mapping_cupy/
+src/legged_control/
+src/ocs2/
+src/ocs2_robotic_assets/
+src/spot_gazebo_ros2/
+
+# OS
+.DS_Store
+Thumbs.db
