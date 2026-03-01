@@ -1,36 +1,167 @@
-# Quadruped Workspace
+# Spot Autonomous Navigation
 
-ROS 2 Humble workspace for Spot robot navigation, localization, and planning.
+<p align="center">
+  <img src="assets/spot_sensors.png" width="400" alt="Boston Dynamics Spot with custom sensor payload">
+</p>
+
+A fully autonomous navigation stack for the Boston Dynamics Spot quadruped
+robot, designed to run entirely on a low-power edge computer (Intel NUC13,
+no GPU) in GPS-denied, communication-denied environments such as underground
+mines.
+
+The system integrates LiDAR-inertial odometry, scan-matching localization
+against a prior map, terrain segmentation, visibility-graph global planning,
+and a velocity-regulated local path follower. After a single mapping pass,
+the robot can navigate to arbitrary goal locations within the known map
+without any learned components or network connectivity.
+
+<p align="center">
+  <img src="assets/mission3_sample1_5x.mp4" width="600" alt="Autonomous navigation demo">
+</p>
+
+## Architecture
+
+```
+VLP-16 + IMU
+     │
+     ▼
+  FAST-LIO2 (LiDAR-Inertial Odometry, 10 Hz)
+     │
+     ├──► NDT Localization (drift correction against prior map)
+     │         │
+     │         ▼
+     │    /odometry_map (global pose)
+     │
+     ├──► Terrain Analysis (PMF ground/obstacle segmentation)
+     │         │
+     │         ▼
+     │    /terrain_cloud (traversable points)
+     │
+     └──────────┐
+                ▼
+          FAR Planner (visibility-graph global planner, 2.5 Hz)
+                │
+                ▼
+       Regulated Pure Pursuit (local path follower)
+                │
+                ▼
+           /cmd_vel ──► Spot
+```
+
+## Hardware
+
+| Component | Model | Notes |
+|-----------|-------|-------|
+| Robot | Boston Dynamics Spot | |
+| Compute | Intel NUC13ANHi7 | i7-1360P (12C/16T), 32 GB RAM, no discrete GPU |
+| LiDAR | Velodyne VLP-16 | 10 Hz, 360° FoV |
+| IMU | Yahboom | 100 Hz, serial 115200 baud |
+| Thermal | TOPDON TC001 | 30 Hz |
+
+## Repository Structure
+
+```
+.
+├── src/
+│   ├── spot_navigation/    # Launch files, configs, goal publishers, benchmark scripts
+│   ├── fast_lio/           # FAST-LIO2 LiDAR-inertial odometry
+│   ├── ndt_localization/   # NDT scan matching against prior PCD map
+│   ├── terrain_analysis/   # PMF ground segmentation + ceiling filter
+│   ├── far_planner/        # Visibility-graph global planner
+│   ├── mpl_planner/        # Regulated Pure Pursuit local path follower
+│   └── velodyne/           # ROS 2 Velodyne VLP-16 driver
+├── assets/                 # Photos, demo videos, CAD files
+├── Dockerfile              # ROS 2 Humble container
+├── docker-compose.yml      # Container orchestration
+├── tmux_session.sh         # 3-window tmux layout for field deployment
+├── zenoh_host.sh           # Zenoh router (robot side) for remote RViz
+└── zenoh_client.sh         # Zenoh client (laptop side)
+```
 
 ## Setup
 
+### Prerequisites
+
+- Docker and Docker Compose
+- (Optional) NVIDIA Container Toolkit for GPU passthrough
+
+### Build
+
 ```bash
 # Clone with all submodules
-git clone --recursive <repo-url>
+git clone --recursive https://github.com/g1y5x3/spot-edge-nav.git
+cd spot-edge-nav
 
-# Build the Docker container
+# Build and start the Docker container
 docker compose up -d
+docker compose exec ros-humble-dev bash
 
-# Inside the container
+# Inside the container: build the workspace
 colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
 
-## Remote RVIZ (Zenoh)
+### Launch
+
+The navigation stack is launched in three layers:
 
 ```bash
-# Robot PC: start the Zenoh router with downsampling config
-./zenoh_host.sh
+# 1. Sensor drivers + static TF tree
+ros2 launch spot_navigation sensors.launch.py
 
-# Client PC: connect to the robot's router
-source zenoh_client.sh
+# 2. Localization: FAST-LIO2 + NDT + terrain analysis
+ros2 launch spot_navigation lio_localization.launch.py
+
+# 3. Planning: FAR Planner + Pure Pursuit
+ros2 launch spot_navigation far_planner.launch.py
 ```
 
-## TODO
+Or use the tmux script for field deployment (sets up all windows with Zenoh
+middleware and workspace sourced):
 
-- [ ] Add `elevation_mapping_cupy` as a tracked submodule
-- [ ] Add `ocs2` and `ocs2_robotic_assets` as tracked submodules
-- [ ] Add `legged_control` as a tracked submodule
-- [ ] Add `spot_gazebo_ros2` as a tracked submodule
-- [ ] Replace the swing leg controller in `spot_gazebo_ros2` with `legged_control` MPC controller
-- [ ] Integrate `elevation_mapping_cupy` with the navigation stack
+```bash
+./tmux_session.sh
+```
+
+### Remote Visualization (Zenoh)
+
+For remote RViz over WiFi (e.g., monitoring from a laptop outside the mine):
+
+```bash
+# On the robot
+./zenoh_host.sh          # default config
+./zenoh_host.sh remote   # downsampled for bandwidth-constrained links
+
+# On the client laptop
+source zenoh_client.sh
+rviz2
+```
+
+## Sending Navigation Goals
+
+```bash
+# Navigate to predefined goal locations
+ros2 run spot_navigation goal1.py   # Goal 1 (easy, ~11 m)
+ros2 run spot_navigation goal2.py   # Goal 2 (intermediate, ~18 m)
+ros2 run spot_navigation goal3.py   # Goal 3 (deep, ~35 m)
+ros2 run spot_navigation entrance.py  # Return to entrance
+```
+
+## Citation
+
+If you use this work, please cite:
+
+```bibtex
+@inproceedings{gui2026mine,
+  author    = {TODO},
+  title     = {Efficient Autonomous Navigation of a Quadruped Robot
+               in Underground Mines on Edge Hardware},
+  booktitle = {2026 IEEE/RSJ International Conference on
+               Intelligent Robots and Systems (IROS)},
+  year      = {2026},
+}
+```
+
+## License
+
+TODO
