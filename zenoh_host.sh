@@ -1,5 +1,9 @@
 #!/bin/bash
 # Zenoh ROS 2 Router Startup Script
+# Usage:
+#   ./zenoh_host.sh          — default config (local/offline testing, no downsampling)
+#   ./zenoh_host.sh remote   — remote config (downsampled for low-latency RVIZ over WiFi)
+
 if ! command -v ros2 &>/dev/null; then
   echo "ERROR: ROS 2 command not found."
   echo "Please ensure you have sourced your ROS 2 environment (e.g., source ~/spot_ws/install/setup.bash) before running this script."
@@ -19,14 +23,20 @@ echo "ROS 2 daemon stopped (if running)."
 
 echo "--- (2/2) Starting Zenoh Router (rmw_zenohd) ---"
 
-# Point the router to our custom config with downsampling rules for remote RVIZ.
-# This reduces bandwidth over WiFi by throttling heavy topics (pointclouds, cameras, debug).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export ZENOH_ROUTER_CONFIG_URI="${SCRIPT_DIR}/zenoh_router_config.json5"
-echo "Using Zenoh router config: ${ZENOH_ROUTER_CONFIG_URI}"
+
+if [[ "$1" == "remote" ]]; then
+  # Remote config: downsampling rules for low-latency RVIZ over WiFi
+  export ZENOH_ROUTER_CONFIG_URI="${SCRIPT_DIR}/zenoh_router_config.json5"
+  echo "Mode: REMOTE (downsampling enabled)"
+  echo "Config: ${ZENOH_ROUTER_CONFIG_URI}"
+else
+  # Default config: no downsampling, full rate on all topics
+  unset ZENOH_ROUTER_CONFIG_URI
+  echo "Mode: DEFAULT (no downsampling, full rate)"
+fi
 
 # Execute the Zenoh router. This process will run in the foreground and display output.
 ros2 run rmw_zenoh_cpp rmw_zenohd
 
-# Note: Press Ctrl+C to stop the Zenoh router and exit the script. And open a new terminal:
-# export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+# Note: Press Ctrl+C to stop the Zenoh router and exit the script.

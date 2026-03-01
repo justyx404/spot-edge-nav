@@ -179,6 +179,17 @@
         { key_expr: "**/rt/imu/**", freq: 0.1 },
       ],
     },
+
+    // --- GLOBAL MAP: Block the full-resolution NDT map (large, on-robot only) ---
+    // The coarse /global_map_viz passes through at full rate (latched, sent once)
+    {
+      id: "block_global_map",
+      flows: ["egress"],
+      messages: ["put"],
+      rules: [
+        { key_expr: "**/rt/global_map/**", freq: 0.1 },
+      ],
+    },
   ],
 
   /// =========================================================================
@@ -190,7 +201,7 @@
   ///   /goal_pose             — user navigation goal (event-driven)
   ///   /initialpose           — user initial pose (event-driven)
   ///   /goal_markers          — static goal markers (1 Hz, small)
-  ///   /global_map            — static PCD map (published once, latched)
+  ///   /global_map_viz        — coarse static PCD map for RVIZ (published once, latched)
   ///   /graph_decoder_viz     — prior map viz (event-driven)
   ///   /far_reach_goal_status — goal reached status (tiny)
   ///   /viz_path_topic        — path line strip (2.5 Hz, tiny)
