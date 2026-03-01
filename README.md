@@ -1,4 +1,4 @@
-# Spot Autonomous Navigation
+# Spot Edge Navigation
 
 <p align="center">
   <img src="assets/spot_sensors.png" width="400" alt="Boston Dynamics Spot with custom sensor payload">
@@ -15,9 +15,15 @@ and a velocity-regulated local path follower. After a single mapping pass,
 the robot can navigate to arbitrary goal locations within the known map
 without any learned components or network connectivity.
 
-<p align="center">
-  <img src="assets/mission3_sample1_5x.mp4" width="600" alt="Autonomous navigation demo">
-</p>
+## Demo
+
+| Mission 1 (Easy, ~11 m) | Mission 2 (Intermediate, ~18 m) |
+|:---:|:---:|
+| ![Mission 1](assets/mission1_sample1_5x.gif) | ![Mission 2](assets/mission2_sample1_5x.gif) |
+
+| Mission 3 (Deep, ~35 m) | Mission 4 (Return to Entrance) |
+|:---:|:---:|
+| ![Mission 3](assets/mission3_sample1_5x.gif) | ![Mission 4](assets/mission4_sample1_5x.gif) |
 
 ## Architecture
 
