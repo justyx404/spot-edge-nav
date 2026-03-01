@@ -155,18 +155,7 @@ ros2 run spot_navigation entrance.py  # Return to entrance
 
 ## Citation
 
-If you use this work, please cite:
-
-```bibtex
-@inproceedings{gui2026mine,
-  author    = {TODO},
-  title     = {Efficient Autonomous Navigation of a Quadruped Robot
-               in Underground Mines on Edge Hardware},
-  booktitle = {2026 IEEE/RSJ International Conference on
-               Intelligent Robots and Systems (IROS)},
-  year      = {2026},
-}
-```
+TODO
 
 ## License
 
