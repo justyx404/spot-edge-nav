@@ -4,6 +4,8 @@
   <img src="assets/spot_sensors.png" width="400" alt="Boston Dynamics Spot with custom sensor payload">
 </p>
 
+**[[Project Page]](https://g1y5x3.github.io/spot-edge-nav/) [[Paper]](#citation) [[arXiv]](#citation)**
+
 A fully autonomous navigation stack for the Boston Dynamics Spot quadruped
 robot, designed to run entirely on a low-power edge computer (Intel NUC13,
 no GPU) in GPS-denied, communication-denied environments such as underground
@@ -155,7 +157,17 @@ ros2 run spot_navigation entrance.py  # Return to entrance
 
 ## Citation
 
-TODO
+If you find this work useful, please cite:
+
+```bibtex
+@article{gao2025spotedgenav,
+  title   = {Efficient Autonomous Navigation of a Quadruped Robot
+             in Underground Mines on Edge Hardware},
+  author  = {Gao, Yixiang and Awuah-Offei, Kwame},
+  journal = {arXiv preprint},
+  year    = {2025}
+}
+```
 
 ## License
 
