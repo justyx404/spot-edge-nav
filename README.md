@@ -160,15 +160,17 @@ ros2 run spot_navigation entrance.py  # Return to entrance
 If you find this work useful, please cite:
 
 ```bibtex
-@article{gao2025spotedgenav,
-  title   = {Efficient Autonomous Navigation of a Quadruped Robot
-             in Underground Mines on Edge Hardware},
-  author  = {Gao, Yixiang and Awuah-Offei, Kwame},
-  journal = {arXiv preprint},
-  year    = {2025}
+@misc{gao2026efficientautonomousnavigationquadruped,
+      title={Efficient Autonomous Navigation of a Quadruped Robot in Underground Mines on Edge Hardware},
+      author={Yixiang Gao and Kwame Awuah-Offei},
+      year={2026},
+      eprint={2603.04470},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2603.04470},
 }
 ```
 
 ## License
 
-TODO
+This project is licensed under the [MIT License](LICENSE).
