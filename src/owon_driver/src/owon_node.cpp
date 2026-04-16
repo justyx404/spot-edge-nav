@@ -22,10 +22,8 @@
 #include <iomanip>
 
 #include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "nav_msgs/msg/odometry.hpp"
-#include "geometry_msgs/msg/point_stamped.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp" // Changed to PoseStamped
 
 // --- TF2 Includes ---
@@ -99,9 +97,7 @@ public:
         tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
         // Publishers
-        pub_string_ = this->create_publisher<std_msgs::msg::String>("owon/display", 10);
         pub_val_ = this->create_publisher<std_msgs::msg::Float32>("owon/value", 10);
-        pub_geo_ = this->create_publisher<geometry_msgs::msg::PointStamped>("owon/geo_point", 10);
 
         RCLCPP_INFO(this->get_logger(), "Starting Owon Driver for %s at %s", model.c_str(), mac_address_.c_str());
         RCLCPP_INFO(this->get_logger(), "Syncing %s -> Transforming to '%s'", odom_topic.c_str(), target_frame_.c_str());
@@ -140,9 +136,7 @@ private:
     std::string latest_val_str_;
 
     // ROS pointers
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_string_;
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pub_val_;
-    rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr pub_geo_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     
     // TF2 pointers
@@ -180,33 +174,8 @@ private:
         double roll, pitch, yaw;
         m.getRPY(roll, pitch, yaw); // Yaw is in radians
 
-        // 4. Publish
-        std::lock_guard<std::mutex> lock(data_mutex_);
-
-        if (has_data_) {
-            // Publish Float
-            auto msg_float = std_msgs::msg::Float32();
-            msg_float.data = latest_val_float_;
-            pub_val_->publish(msg_float);
-
-            // Publish String with MAP Coordinates AND Yaw
-            std::stringstream ss;
-            ss << latest_val_str_ 
-               << " | Map X: " << std::fixed << std::setprecision(2) << pose_out.pose.position.x
-               << " Y: " << std::fixed << std::setprecision(2) << pose_out.pose.position.y
-               << " Yaw: " << std::fixed << std::setprecision(2) << yaw;
-
-            auto msg_str = std_msgs::msg::String();
-            msg_str.data = ss.str();
-            pub_string_->publish(msg_str);
-
-            // Publish Geo-Point for visualization (Z = Voltage)
-            geometry_msgs::msg::PointStamped geo_msg;
-            geo_msg.header = pose_out.header;
-            geo_msg.point = pose_out.pose.position;
-            geo_msg.point.z = latest_val_float_; // Overwrite Z with voltage
-            pub_geo_->publish(geo_msg);
-        }
+        (void)yaw;
+        (void)pose_out;
     }
 
     void read_loop()
@@ -317,6 +286,10 @@ private:
         
         latest_val_str_ = std::string(fixed_val_buf) + " " + unit;
         has_data_ = true;
+
+        auto msg_float = std_msgs::msg::Float32();
+        msg_float.data = latest_val_float_;
+        pub_val_->publish(msg_float);
     }
 
     std::string get_unit_string(int function, int scale, int measurement) {

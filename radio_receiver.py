@@ -33,10 +33,10 @@ def main():
                 print(f"Invalid frame: {line!r} ({exc})", file=sys.stderr)
                 continue
 
-            pos = payload.get("position", {})
-            orient = payload.get("orientation", {})
+            pos = payload.get("position") or {}
+            orient = payload.get("orientation") or {}
             voltage = payload.get("voltage")
-            stamp = payload.get("stamp", {})
+            stamp = payload.get("stamp") or {}
 
             print(
                 f"t={stamp.get('sec', 0)}.{stamp.get('nanosec', 0):09d} "
