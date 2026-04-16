@@ -8,7 +8,7 @@
 	branch = temp-branch
 [submodule "src/mpl_planner"]
 	path = src/mpl_planner
-	url = https://github.com/g1y5x3/local_planner_motion_primitives.git
+	url = https://github.com/justyx404/mpl_planner.git
 	branch = refactor
 [submodule "src/spot_navigation"]
 	path = src/spot_navigation
