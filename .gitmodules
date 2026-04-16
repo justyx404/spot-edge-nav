@@ -1,26 +1,22 @@
 [submodule "src/far_planner"]
 	path = src/far_planner
-	url = https://github.com/g1y5x3/far_planner.git
+	url = https://github.com/justyx404/far_planner.git
 	branch = humble-jazzy
 [submodule "src/fast_lio"]
 	path = src/fast_lio
-	url = https://github.com/g1y5x3/FAST_LIO.git
+	url = https://github.com/justyx404/FAST_LIO.git
 	branch = temp-branch
-[submodule "src/ndt_localization"]
-	path = src/ndt_localization
-	url = https://github.com/g1y5x3/ndt_localization.git
-	branch = smooth_convergence
 [submodule "src/mpl_planner"]
 	path = src/mpl_planner
 	url = https://github.com/g1y5x3/local_planner_motion_primitives.git
 	branch = refactor
 [submodule "src/spot_navigation"]
 	path = src/spot_navigation
-	url = https://github.com/g1y5x3/spot_navigation.git
+	url = https://github.com/justyx404/spot_navigation.git
 	branch = s&t
 [submodule "src/terrain_analysis"]
 	path = src/terrain_analysis
-	url = https://github.com/g1y5x3/terrain_analysis.git
+	url = https://github.com/justyx404/terrain_analysis.git
 	branch = master
 [submodule "src/velodyne"]
 	path = src/velodyne
