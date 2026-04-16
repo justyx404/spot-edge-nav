@@ -6,6 +6,10 @@
 	path = src/fast_lio
 	url = https://github.com/justyx404/FAST_LIO.git
 	branch = temp-branch
+[submodule "src/ndt_localization"]
+	path = src/ndt_localization
+	url = https://github.com/justyx404/ndt_localization.git
+	branch = smooth_convergence
 [submodule "src/mpl_planner"]
 	path = src/mpl_planner
 	url = https://github.com/justyx404/mpl_planner.git
