@@ -27,8 +27,15 @@ def main():
             if not line:
                 continue
 
+            text = line.decode("utf-8", errors="ignore").strip()
+            start = text.find("{")
+            end = text.rfind("}")
+            if start == -1 or end == -1 or end < start:
+                print(f"Ignoring non-JSON frame: {line!r}", file=sys.stderr)
+                continue
+
             try:
-                payload = json.loads(line.decode("utf-8").strip())
+                payload = json.loads(text[start:end + 1])
             except Exception as exc:
                 print(f"Invalid frame: {line!r} ({exc})", file=sys.stderr)
                 continue
