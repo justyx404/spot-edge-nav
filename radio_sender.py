@@ -10,7 +10,7 @@ import serial
 def main():
     parser = argparse.ArgumentParser(description="Send sample JSON frames over a serial radio link.")
     parser.add_argument("--port", default="/dev/ttyUSB0", help="Serial port connected to the radio transmitter")
-    parser.add_argument("--baud", type=int, default=115200, help="Serial baud rate")
+    parser.add_argument("--baud", type=int, default=57600, help="Serial baud rate")
     parser.add_argument("--rate", type=float, default=2.0, help="Send rate in Hz")
     args = parser.parse_args()
 

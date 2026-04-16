@@ -27,7 +27,7 @@ tmux send-keys -t "$SESSION:hardware" "$SETUP" Enter
 
 tmux split-window -t "$SESSION:hardware" -v
 tmux send-keys -t "$SESSION:hardware.1" "$SETUP" Enter
-tmux send-keys -t "$SESSION:hardware.1" "ros2 launch spot_navigation sensors.launch.py"
+tmux send-keys -t "$SESSION:hardware.1" "ros2 launch spot_navigation sensors.launch.py radio_baud:=57600"
 
 tmux split-window -t "$SESSION:hardware.1" -h
 tmux send-keys -t "$SESSION:hardware.2" "$SETUP" Enter
