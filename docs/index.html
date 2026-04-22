@@ -140,8 +140,22 @@
     }
 
     /* Results table */
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      margin: 1rem 0;
+    }
+    .table-scroll table { margin: 0; }
+    .table-scroll-hint {
+      display: none;
+      font-size: 0.82rem;
+      color: #666;
+      margin-bottom: 0.4rem;
+    }
     .results-table {
       width: 100%;
+      min-width: 680px;
       border-collapse: collapse;
       font-size: 0.9rem;
       margin: 1rem 0;
@@ -162,6 +176,7 @@
     /* Hardware table */
     .hw-table {
       width: 100%;
+      min-width: 640px;
       border-collapse: collapse;
       font-size: 0.9rem;
       margin: 1rem 0;
@@ -200,9 +215,139 @@
     /* Hardware image */
     .hw-image {
       display: block;
-      max-width: 400px;
+      width: 100%;
+      max-width: 500px;
+      height: auto;
       margin: 1rem auto;
       border-radius: 6px;
+    }
+
+    /* Zoomable figures */
+    .zoomable-block { margin: 1rem 0; }
+    .zoomable-media {
+      position: relative;
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: none;
+      background: none;
+      border-radius: 4px;
+      overflow: hidden;
+      cursor: zoom-in;
+      touch-action: manipulation;
+    }
+    .zoomable-media::after {
+      content: "Tap to enlarge";
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.68);
+      color: #fff;
+      font-size: 0.78rem;
+      line-height: 1;
+      pointer-events: none;
+    }
+    .zoomable-media:focus-visible {
+      outline: 2px solid #1a73e8;
+      outline-offset: 3px;
+    }
+    .zoomable-media img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .zoom-hint {
+      font-size: 0.85rem;
+      color: #666;
+      text-align: center;
+      margin-top: 0.4rem;
+    }
+    .zoom-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.88);
+    }
+    .zoom-overlay[hidden] { display: none; }
+    .zoom-dialog {
+      position: relative;
+      width: min(96vw, 1200px);
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .zoom-dialog img {
+      display: block;
+      max-width: 100%;
+      max-height: calc(92vh - 3rem);
+      object-fit: contain;
+      border-radius: 6px;
+      background: #111;
+    }
+    .zoom-caption {
+      color: #f0f0f0;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .zoom-close {
+      position: absolute;
+      top: -0.25rem;
+      right: 0;
+      padding: 0.4rem 0.75rem;
+      border: none;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      color: #fff;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .zoom-close:hover { background: rgba(255, 255, 255, 0.28); }
+
+    /* Field footage */
+    .field-clips-grid,
+    .field-compare-grid {
+      display: grid;
+      gap: 1rem;
+      align-items: start;
+    }
+    .field-clips-grid {
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      margin: 1rem 0;
+    }
+    .field-compare-grid {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      margin: 1.5rem 0 1rem 0;
+    }
+    .field-card {
+      margin: 0;
+      text-align: center;
+      min-width: 0;
+    }
+    .field-card--portrait {
+      width: min(100%, 220px);
+      justify-self: center;
+    }
+    .field-video {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      border: 1px solid #eee;
+      background: #000;
+    }
+    .field-card figcaption {
+      font-size: 0.85rem;
+      color: #666;
+      margin-top: 0.45rem;
     }
 
     /* Footer */
@@ -221,6 +366,12 @@
       h1 { font-size: 1.4rem; }
       .demo-grid { grid-template-columns: 1fr; }
       .stats { grid-template-columns: 1fr 1fr; }
+      .table-scroll-hint { display: block; }
+      .field-clips-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .field-compare-grid { grid-template-columns: 1fr; }
+      .field-card--portrait { width: min(100%, 260px); }
+      .zoomable-media::after { top: 0.6rem; right: 0.6rem; font-size: 0.74rem; }
+      .zoom-close { top: 0; }
     }
   </style>
 </head>
@@ -313,60 +464,63 @@
     </div>
   </div>
 
-  <table class="results-table">
-    <thead>
-      <tr>
-        <th>Goal</th>
-        <th>Trials</th>
-        <th>Success</th>
-        <th>Path (m)</th>
-        <th>SPL</th>
-        <th>Time (s)</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>G1 (Easy)</td>
-        <td>5/5</td>
-        <td>100%</td>
-        <td>13.1 &plusmn; 0.2</td>
-        <td>0.87 &plusmn; 0.01</td>
-        <td>27 &plusmn; 1</td>
-      </tr>
-      <tr>
-        <td>G2 (Intersection)</td>
-        <td>5/5</td>
-        <td>100%</td>
-        <td>25.5 &plusmn; 1.7</td>
-        <td>0.71 &plusmn; 0.05</td>
-        <td>60 &plusmn; 6</td>
-      </tr>
-      <tr>
-        <td>G3 (Deep)</td>
-        <td>5/5</td>
-        <td>100%</td>
-        <td>51.3 &plusmn; 1.0</td>
-        <td>0.68 &plusmn; 0.01</td>
-        <td>127 &plusmn; 7</td>
-      </tr>
-      <tr>
-        <td>G4 (Entrance)</td>
-        <td>5/5</td>
-        <td>100%</td>
-        <td>53.5 &plusmn; 8.8</td>
-        <td>0.66 &plusmn; 0.04</td>
-        <td>131 &plusmn; 20</td>
-      </tr>
-      <tr class="overall">
-        <td>All</td>
-        <td>20/20</td>
-        <td>100%</td>
-        <td>35.9</td>
-        <td>0.73 &plusmn; 0.09</td>
-        <td>86</td>
-      </tr>
-    </tbody>
-  </table>
+  <div class="table-scroll-hint">Swipe sideways to view full table.</div>
+  <div class="table-scroll">
+    <table class="results-table">
+      <thead>
+        <tr>
+          <th>Goal</th>
+          <th>Trials</th>
+          <th>Success</th>
+          <th>Path (m)</th>
+          <th>SPL</th>
+          <th>Time (s)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>G1 (Easy)</td>
+          <td>5/5</td>
+          <td>100%</td>
+          <td>13.1 &plusmn; 0.2</td>
+          <td>0.87 &plusmn; 0.01</td>
+          <td>27 &plusmn; 1</td>
+        </tr>
+        <tr>
+          <td>G2 (Intersection)</td>
+          <td>5/5</td>
+          <td>100%</td>
+          <td>25.5 &plusmn; 1.7</td>
+          <td>0.71 &plusmn; 0.05</td>
+          <td>60 &plusmn; 6</td>
+        </tr>
+        <tr>
+          <td>G3 (Deep)</td>
+          <td>5/5</td>
+          <td>100%</td>
+          <td>51.3 &plusmn; 1.0</td>
+          <td>0.68 &plusmn; 0.01</td>
+          <td>127 &plusmn; 7</td>
+        </tr>
+        <tr>
+          <td>G4 (Entrance)</td>
+          <td>5/5</td>
+          <td>100%</td>
+          <td>53.5 &plusmn; 8.8</td>
+          <td>0.66 &plusmn; 0.04</td>
+          <td>131 &plusmn; 20</td>
+        </tr>
+        <tr class="overall">
+          <td>All</td>
+          <td>20/20</td>
+          <td>100%</td>
+          <td>35.9</td>
+          <td>0.73 &plusmn; 0.09</td>
+          <td>86</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
   <!-- All Trials -->
   <h2>All Trial Paths</h2>
@@ -374,27 +528,40 @@
     Executed paths (red) vs. geodesic shortest paths (blue dashed) for all
     20 trials across 4 goal locations, overlaid on the mine elevation map.
   </p>
-  <img src="static/all_trials_grid.png" alt="All 20 trial paths across 4 goals" style="width:100%; border-radius:4px; margin:1rem 0;" loading="lazy">
+  <div class="zoomable-block">
+    <button class="zoomable-media" type="button" aria-label="Enlarge all trial paths figure" data-zoom-src="static/all_trials_grid.png" data-zoom-alt="All 20 trial paths across 4 goals" data-zoom-caption="All 20 trial paths across 4 goals">
+      <img src="static/all_trials_grid.png" alt="All 20 trial paths across 4 goals" loading="lazy">
+    </button>
+    <p class="zoom-hint">Tap or click image to enlarge.</p>
+  </div>
 
   <!-- System Architecture -->
   <h2>System Architecture</h2>
-  <img src="static/system_architecture.png" alt="System architecture diagram" style="width:100%; border-radius:4px; margin:1rem 0;">
+  <div class="zoomable-block">
+    <button class="zoomable-media" type="button" aria-label="Enlarge system architecture diagram" data-zoom-src="static/system_architecture.png" data-zoom-alt="System architecture diagram" data-zoom-caption="System architecture diagram">
+      <img src="static/system_architecture.png" alt="System architecture diagram" loading="lazy">
+    </button>
+    <p class="zoom-hint">Tap or click image to enlarge.</p>
+  </div>
 
   <!-- Hardware -->
   <h2>Hardware</h2>
-  <img src="static/hardware.png" alt="Boston Dynamics Spot with custom navigation payload" style="display:block; max-width:500px; margin:1rem auto; border-radius:6px;">
-  <table class="hw-table">
-    <thead>
-      <tr><th>Component</th><th>Model</th><th>Notes</th></tr>
-    </thead>
-    <tbody>
-      <tr><td>Robot</td><td>Boston Dynamics Spot</td><td></td></tr>
-      <tr><td>Compute</td><td>Intel NUC13 (i7-1360P)</td><td>12C/16T, 32 GB RAM, no discrete GPU, 40W sustained</td></tr>
-      <tr><td>LiDAR</td><td>Velodyne VLP-16</td><td>10 Hz, 360&deg; FoV, 0.75&ndash;30 m range</td></tr>
-      <tr><td>IMU</td><td>Yahboom</td><td>100 Hz, 6-axis</td></tr>
-      <tr><td>Thermal</td><td>TOPDON TC001</td><td>30 Hz (recorded only, not used for navigation)</td></tr>
-    </tbody>
-  </table>
+  <img class="hw-image" src="static/hardware.png" alt="Boston Dynamics Spot with custom navigation payload" loading="lazy">
+  <div class="table-scroll-hint">Swipe sideways to view full table.</div>
+  <div class="table-scroll">
+    <table class="hw-table">
+      <thead>
+        <tr><th>Component</th><th>Model</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Robot</td><td>Boston Dynamics Spot</td><td></td></tr>
+        <tr><td>Compute</td><td>Intel NUC13 (i7-1360P)</td><td>12C/16T, 32 GB RAM, no discrete GPU, 40W sustained</td></tr>
+        <tr><td>LiDAR</td><td>Velodyne VLP-16</td><td>10 Hz, 360&deg; FoV, 0.75&ndash;30 m range</td></tr>
+        <tr><td>IMU</td><td>Yahboom</td><td>100 Hz, 6-axis</td></tr>
+        <tr><td>Thermal</td><td>TOPDON TC001</td><td>30 Hz (recorded only, not used for navigation)</td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <!-- Demo -->
   <h2>Navigation Demos</h2>
@@ -430,56 +597,114 @@
     show the robot reaching each goal location.
   </p>
 
-  <div style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap; margin:1rem 0;">
-    <figure style="margin:0; text-align:center;">
-      <video autoplay muted loop playsinline style="height:280px; border-radius:4px; border:1px solid #eee;">
+  <div class="field-clips-grid">
+    <figure class="field-card field-card--portrait">
+      <video class="field-video" autoplay muted loop playsinline>
         <source src="static/phone_g1_arrival_x5.mp4" type="video/mp4">
       </video>
-      <figcaption style="font-size:0.85rem; color:#666; margin-top:0.3rem;">Goal 1 arrival (5&times;)</figcaption>
+      <figcaption>Goal 1 arrival (5&times;)</figcaption>
     </figure>
-    <figure style="margin:0; text-align:center;">
-      <video autoplay muted loop playsinline style="height:280px; border-radius:4px; border:1px solid #eee;">
+    <figure class="field-card field-card--portrait">
+      <video class="field-video" autoplay muted loop playsinline>
         <source src="static/phone_g2_arrival_x5.mp4" type="video/mp4">
       </video>
-      <figcaption style="font-size:0.85rem; color:#666; margin-top:0.3rem;">Goal 2 arrival (5&times;)</figcaption>
+      <figcaption>Goal 2 arrival (5&times;)</figcaption>
     </figure>
-    <figure style="margin:0; text-align:center;">
-      <video autoplay muted loop playsinline style="height:280px; border-radius:4px; border:1px solid #eee;">
+    <figure class="field-card field-card--portrait">
+      <video class="field-video" autoplay muted loop playsinline>
         <source src="static/phone_g3_arrival_x5.mp4" type="video/mp4">
       </video>
-      <figcaption style="font-size:0.85rem; color:#666; margin-top:0.3rem;">Goal 3 arrival (5&times;)</figcaption>
+      <figcaption>Goal 3 arrival (5&times;)</figcaption>
     </figure>
-    <figure style="margin:0; text-align:center;">
-      <video autoplay muted loop playsinline style="height:280px; border-radius:4px; border:1px solid #eee;">
+    <figure class="field-card field-card--portrait">
+      <video class="field-video" autoplay muted loop playsinline>
         <source src="static/phone_g4_arrival_x5.mp4" type="video/mp4">
       </video>
-      <figcaption style="font-size:0.85rem; color:#666; margin-top:0.3rem;">Goal 4 arrival (5&times;)</figcaption>
+      <figcaption>Goal 4 arrival (5&times;)</figcaption>
     </figure>
   </div>
 
-  <div style="display:flex; justify-content:center; gap:1rem; flex-wrap:wrap; margin:1.5rem 0 1rem 0;">
-    <figure style="margin:0; text-align:center;">
-      <video id="g4-phone" autoplay loop muted playsinline style="height:320px; border-radius:4px; border:1px solid #eee;">
+  <div class="field-compare-grid">
+    <figure class="field-card">
+      <video id="g4-phone" class="field-video" autoplay loop muted playsinline>
         <source src="static/g4_r4_5x.mp4" type="video/mp4">
       </video>
-      <figcaption style="font-size:0.85rem; color:#666; margin-top:0.3rem;">Phone footage (5&times;)</figcaption>
+      <figcaption>Phone footage (5&times;)</figcaption>
     </figure>
-    <figure style="margin:0; text-align:center;">
-      <video id="g4-lidar" autoplay loop muted playsinline style="height:320px; border-radius:4px; border:1px solid #eee;">
+    <figure class="field-card">
+      <video id="g4-lidar" class="field-video" autoplay loop muted playsinline>
         <source src="static/lidar_3d_g4_tracking.mp4" type="video/mp4">
       </video>
-      <figcaption style="font-size:0.85rem; color:#666; margin-top:0.3rem;">3D LiDAR view (5&times;)</figcaption>
+      <figcaption>3D LiDAR view (5&times;)</figcaption>
     </figure>
+  </div>
+
+  <div class="zoom-overlay" id="media-lightbox" hidden aria-hidden="true">
+    <div class="zoom-dialog" role="dialog" aria-modal="true" aria-labelledby="media-lightbox-caption">
+      <button class="zoom-close" id="media-lightbox-close" type="button" aria-label="Close enlarged image">Close</button>
+      <img id="media-lightbox-image" alt="">
+      <p class="zoom-caption" id="media-lightbox-caption"></p>
+    </div>
   </div>
   <script>
     (function() {
       var a = document.getElementById('g4-phone');
       var b = document.getElementById('g4-lidar');
-      Promise.all([a.play(), b.play()]).catch(function(){});
-      // Re-sync on loop: when either ends, reset both to 0
-      function sync(e) { a.currentTime = 0; b.currentTime = 0; a.play(); b.play(); }
-      a.addEventListener('ended', sync);
-      b.addEventListener('ended', sync);
+      if (a && b) {
+        Promise.all([a.play(), b.play()]).catch(function(){});
+        function sync() {
+          a.currentTime = 0;
+          b.currentTime = 0;
+          a.play();
+          b.play();
+        }
+        a.addEventListener('ended', sync);
+        b.addEventListener('ended', sync);
+      }
+
+      var overlay = document.getElementById('media-lightbox');
+      var overlayImage = document.getElementById('media-lightbox-image');
+      var overlayCaption = document.getElementById('media-lightbox-caption');
+      var overlayClose = document.getElementById('media-lightbox-close');
+
+      function openLightbox(button) {
+        overlayImage.src = button.getAttribute('data-zoom-src');
+        overlayImage.alt = button.getAttribute('data-zoom-alt') || '';
+        overlayCaption.textContent = button.getAttribute('data-zoom-caption') || overlayImage.alt;
+        overlay.hidden = false;
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        overlayClose.focus();
+      }
+
+      function closeLightbox() {
+        overlay.hidden = true;
+        overlay.setAttribute('aria-hidden', 'true');
+        overlayImage.removeAttribute('src');
+        overlayImage.alt = '';
+        overlayCaption.textContent = '';
+        document.body.style.overflow = '';
+      }
+
+      if (overlay && overlayImage && overlayCaption && overlayClose) {
+        document.querySelectorAll('.zoomable-media').forEach(function(button) {
+          button.addEventListener('click', function() { openLightbox(button); });
+        });
+
+        overlay.addEventListener('click', function(event) {
+          if (event.target === overlay) {
+            closeLightbox();
+          }
+        });
+
+        overlayClose.addEventListener('click', closeLightbox);
+
+        document.addEventListener('keydown', function(event) {
+          if (event.key === 'Escape' && !overlay.hidden) {
+            closeLightbox();
+          }
+        });
+      }
     })();
   </script>
 
