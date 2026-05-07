@@ -109,6 +109,35 @@ colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
 
+### Persistent Serial Device Names
+
+The IMU and radio are connected as USB serial devices. To avoid `ttyUSB`
+ordering changes across reboots, this repo uses persistent udev symlinks:
+
+- udev rules: `src/spot_navigation/config/99-spot-serial.rules`
+- IMU default: `src/spot_navigation/launch/sensors.launch.py` uses `/dev/imu_usb`
+- radio default: `src/spot_navigation/launch/sensors.launch.py` uses `/dev/radio_usb`
+
+Installed rules:
+
+```udev
+SUBSYSTEM=="tty", ENV{ID_SERIAL}=="Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001", SYMLINK+="imu_usb"
+SUBSYSTEM=="tty", ENV{ID_SERIAL}=="FTDI_FT232R_USB_UART_BG00JV76", SYMLINK+="radio_usb"
+```
+
+Install them on the robot with:
+
+```bash
+sudo install -m 0644 src/spot_navigation/config/99-spot-serial.rules /etc/udev/rules.d/99-spot-serial.rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+ls -l /dev/imu_usb /dev/radio_usb
+```
+
+These rules are expected to work across different machines as long as the same
+USB serial adapters are used. If the adapters are replaced, or if multiple
+devices expose the same USB identity, update the rule match fields accordingly.
+
 ### Launch
 
 The navigation stack is launched in three layers:
@@ -147,12 +176,14 @@ rviz2
 
 ## Sending Navigation Goals
 
+Manual goals can be sent from RViz with the `2D Goal Pose` tool, or by running
+the route manager with a route YAML.
+
 ```bash
-# Navigate to predefined goal locations
-ros2 run spot_navigation goal1.py   # Goal 1 (easy, ~11 m)
-ros2 run spot_navigation goal2.py   # Goal 2 (intermediate, ~18 m)
-ros2 run spot_navigation goal3.py   # Goal 3 (deep, ~35 m)
-ros2 run spot_navigation entrance.py  # Return to entrance
+# Run the queue-based route manager with a route file
+ros2 launch spot_navigation far_planner.launch.py \
+  route_manager:=true \
+  route_file:=/absolute/path/to/route.yaml
 ```
 
 ## Citation

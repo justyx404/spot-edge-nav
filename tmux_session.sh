@@ -18,12 +18,13 @@ SETUP="cd \"$WORKSPACE_DIR\" && export RMW_IMPLEMENTATION=rmw_zenoh_cpp && sourc
 
 # ============================================================
 # Window 0: Hardware
-#   Pane 0: Robot driver
+#   Pane 0: Robot driver command prefilled
 #   Pane 1: Sensor drivers
-#   Pane 2: Spare
+#   Pane 2: Spare with standalone midpoint route manager command prefilled
 # ============================================================
 tmux new-session -d -s "$SESSION" -n "hardware" -x 200 -y 50
 tmux send-keys -t "$SESSION:hardware" "$SETUP" Enter
+tmux send-keys -t "$SESSION:hardware.0" 'ros2 launch spot_driver spot_driver.launch.py password:=${SPOT_PASSWORD:?set SPOT_PASSWORD}'
 
 tmux split-window -t "$SESSION:hardware" -v
 tmux send-keys -t "$SESSION:hardware.1" "$SETUP" Enter
@@ -36,18 +37,19 @@ tmux send-keys -t "$SESSION:hardware.2" "$SETUP" Enter
 # Window 1: Software
 #   Pane 0: Odometry / localization
 #   Pane 1: Path planning
-#   Pane 2: Spare (scripts, topic echo, etc.)
+#   Pane 2: Spare with midpoint route command prefilled
 # ============================================================
 tmux new-window -t "$SESSION" -n "software"
 tmux send-keys -t "$SESSION:software" "$SETUP" Enter
-tmux send-keys -t "$SESSION:software.0" "ros2 launch spot_navigation lio_localization.launch.py"
+tmux send-keys -t "$SESSION:software.0" "ros2 launch spot_navigation lio_localization.launch.py map_path:=$WORKSPACE_DIR/src/spot_navigation/map/microgrid_transformed.pcd"
 
 tmux split-window -t "$SESSION:software" -v
 tmux send-keys -t "$SESSION:software.1" "$SETUP" Enter
-tmux send-keys -t "$SESSION:software.1" "ros2 launch spot_navigation far_planner.launch.py"
+tmux send-keys -t "$SESSION:software.1" "ros2 launch spot_navigation far_planner.launch.py use_sim_time:=False"
 
 tmux split-window -t "$SESSION:software.1" -h
 tmux send-keys -t "$SESSION:software.2" "$SETUP" Enter
+tmux send-keys -t "$SESSION:software.2" "ros2 launch spot_navigation far_planner.launch.py route_manager:=true route_file:=$WORKSPACE_DIR/src/spot_navigation/config/midpoint_route.yaml"
 
 # ============================================================
 # Window 2: Topics
@@ -64,6 +66,7 @@ tmux send-keys -t "$SESSION:topics.1" "$SETUP" Enter
 
 tmux split-window -t "$SESSION:topics.1" -h
 tmux send-keys -t "$SESSION:topics.2" "$SETUP" Enter
+tmux send-keys -t "$SESSION:topics.2" "ros2 run spot_navigation route_manager --ros-args -p route_file:=$WORKSPACE_DIR/src/spot_navigation/config/midpoint_route.yaml"
 
 # Focus on the hardware window
 tmux select-window -t "$SESSION:hardware"

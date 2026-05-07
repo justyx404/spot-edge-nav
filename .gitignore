@@ -4,6 +4,7 @@ install/
 log/
 
 # Rosbag recordings and map data
+rosbag2_*/
 *.db3
 *.mcap
 *.bag
@@ -19,6 +20,8 @@ __pycache__/
 *.pyo
 
 # IDE
+.codex
+.codex/
 .vscode/
 .idea/
 *.swp

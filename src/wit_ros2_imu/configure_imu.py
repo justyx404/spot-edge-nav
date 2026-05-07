@@ -2,7 +2,7 @@ import serial
 import time
 
 # Configure your serial port settings
-port = "/dev/ttyUSB0"  # Change to /dev/ttyUSB0 on Linux
+port = "/dev/imu_usb"
 baud = 9600    # Default baud rate before change (check your manual)
 
 try:

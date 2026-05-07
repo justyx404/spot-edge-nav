@@ -1,28 +1,32 @@
 [submodule "src/far_planner"]
 	path = src/far_planner
-	url = https://github.com/g1y5x3/far_planner.git
+	url = git@github.com:justyx404/far_planner.git
 	branch = humble-jazzy
 [submodule "src/fast_lio"]
 	path = src/fast_lio
-	url = https://github.com/g1y5x3/FAST_LIO.git
+	url = git@github.com:justyx404/FAST_LIO.git
 	branch = temp-branch
 [submodule "src/ndt_localization"]
 	path = src/ndt_localization
-	url = https://github.com/g1y5x3/ndt_localization.git
+	url = git@github.com:justyx404/ndt_localization.git
 	branch = smooth_convergence
 [submodule "src/mpl_planner"]
 	path = src/mpl_planner
-	url = https://github.com/g1y5x3/local_planner_motion_primitives.git
+	url = git@github.com:justyx404/mpl_planner.git
 	branch = refactor
 [submodule "src/spot_navigation"]
 	path = src/spot_navigation
-	url = https://github.com/g1y5x3/spot_navigation.git
-	branch = s&t
+	url = git@github.com:justyx404/spot_navigation.git
+	branch = ameren
 [submodule "src/terrain_analysis"]
 	path = src/terrain_analysis
-	url = https://github.com/g1y5x3/terrain_analysis.git
+	url = git@github.com:justyx404/terrain_analysis.git
 	branch = master
 [submodule "src/velodyne"]
 	path = src/velodyne
 	url = https://github.com/ros-drivers/velodyne.git
 	branch = ros2
+[submodule "src/spot_ros2_driver"]
+	path = src/spot_ros2_driver
+	url = git@github.com:justyx404/spot_ros2_driver.git
+	branch = main
