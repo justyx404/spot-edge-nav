@@ -20,11 +20,13 @@
 #include <mutex>
 #include <atomic>
 #include <iomanip>
+#include <cmath>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/float32.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp" // Changed to PoseStamped
+#include "visualization_msgs/msg/marker.hpp"
 
 // --- TF2 Includes ---
 #include "tf2_ros/transform_listener.h"
@@ -69,12 +71,26 @@ public:
         this->declare_parameter("model", "cm2100b");
         this->declare_parameter("odom_topic", "/odometry");
         this->declare_parameter("target_frame", "map"); 
+        this->declare_parameter("marker_topic", "owon/voltage_marker");
+        this->declare_parameter("marker_frame_id", "base_link");
+        this->declare_parameter("marker_z", 1.2);
+        this->declare_parameter("marker_text_size", 0.35);
+        this->declare_parameter("marker_lifetime_sec", 3.0);
+        this->declare_parameter("voltage_warn_threshold", 45.0);
+        this->declare_parameter("voltage_critical_threshold", 42.0);
 
         // Get Parameters
         mac_address_ = this->get_parameter("mac_address").as_string();
         std::string model = this->get_parameter("model").as_string();
         std::string odom_topic = this->get_parameter("odom_topic").as_string();
         target_frame_ = this->get_parameter("target_frame").as_string();
+        std::string marker_topic = this->get_parameter("marker_topic").as_string();
+        marker_frame_id_ = this->get_parameter("marker_frame_id").as_string();
+        marker_z_ = this->get_parameter("marker_z").as_double();
+        marker_text_size_ = this->get_parameter("marker_text_size").as_double();
+        marker_lifetime_sec_ = this->get_parameter("marker_lifetime_sec").as_double();
+        voltage_warn_threshold_ = this->get_parameter("voltage_warn_threshold").as_double();
+        voltage_critical_threshold_ = this->get_parameter("voltage_critical_threshold").as_double();
 
         // Configure Handle
         if (model == "b35t" || model == "b41t") {
@@ -98,9 +114,11 @@ public:
 
         // Publishers
         pub_val_ = this->create_publisher<std_msgs::msg::Float32>("owon/value", 10);
+        pub_marker_ = this->create_publisher<visualization_msgs::msg::Marker>(marker_topic, 10);
 
         RCLCPP_INFO(this->get_logger(), "Starting Owon Driver for %s at %s", model.c_str(), mac_address_.c_str());
         RCLCPP_INFO(this->get_logger(), "Syncing %s -> Transforming to '%s'", odom_topic.c_str(), target_frame_.c_str());
+        RCLCPP_INFO(this->get_logger(), "Publishing voltage marker on %s in frame %s", marker_topic.c_str(), marker_frame_id_.c_str());
         
         // Subscriber
         odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
@@ -126,6 +144,12 @@ private:
     std::string owon_handle_;
     int owon_length_;
     std::string target_frame_;
+    std::string marker_frame_id_;
+    double marker_z_;
+    double marker_text_size_;
+    double marker_lifetime_sec_;
+    double voltage_warn_threshold_;
+    double voltage_critical_threshold_;
 
     std::thread reader_thread_;
     std::atomic<bool> keep_running_;
@@ -137,6 +161,7 @@ private:
 
     // ROS pointers
     rclcpp::Publisher<std_msgs::msg::Float32>::SharedPtr pub_val_;
+    rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr pub_marker_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     
     // TF2 pointers
@@ -274,22 +299,68 @@ private:
             fixed_val_buf[fv++] = tmp_val_buf[tv];
         }
 
-        std::string unit = get_unit_string(function, scale, measurement);
-        
-        std::lock_guard<std::mutex> lock(data_mutex_);
-        
+        const std::string unit = get_unit_string(function, scale, measurement);
+        const std::string value_text = std::string(fixed_val_buf) + " " + unit;
+        float value_float = 0.0f;
+
         try {
-            latest_val_float_ = std::stof(fixed_val_buf);
+            value_float = std::stof(fixed_val_buf);
         } catch (...) {
-            latest_val_float_ = 0.0; 
+            value_float = 0.0f;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(data_mutex_);
+            latest_val_float_ = value_float;
+            latest_val_str_ = value_text;
+            has_data_ = true;
         }
         
-        latest_val_str_ = std::string(fixed_val_buf) + " " + unit;
-        has_data_ = true;
-
         auto msg_float = std_msgs::msg::Float32();
-        msg_float.data = latest_val_float_;
+        msg_float.data = value_float;
         pub_val_->publish(msg_float);
+
+        publish_voltage_marker(value_float, value_text, unit);
+    }
+
+    void publish_voltage_marker(float value, const std::string& text, const std::string& unit)
+    {
+        auto marker = visualization_msgs::msg::Marker();
+        marker.header.frame_id = marker_frame_id_;
+        marker.header.stamp = this->now();
+        marker.ns = "owon_voltage";
+        marker.id = 0;
+        marker.type = visualization_msgs::msg::Marker::TEXT_VIEW_FACING;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.pose.position.z = marker_z_;
+        marker.pose.orientation.w = 1.0;
+        marker.scale.z = marker_text_size_;
+        marker.text = text;
+        marker.lifetime = rclcpp::Duration::from_seconds(marker_lifetime_sec_);
+
+        marker.color.a = 1.0;
+        const bool is_voltage_reading = unit.find("V") != std::string::npos;
+        if (is_voltage_reading && std::isfinite(value)) {
+            if (value <= voltage_critical_threshold_) {
+                marker.color.r = 1.0;
+                marker.color.g = 0.1;
+                marker.color.b = 0.1;
+            } else if (value <= voltage_warn_threshold_) {
+                marker.color.r = 1.0;
+                marker.color.g = 0.8;
+                marker.color.b = 0.0;
+            } else {
+                marker.color.r = 0.1;
+                marker.color.g = 1.0;
+                marker.color.b = 0.2;
+            }
+        } else {
+            marker.color.r = 1.0;
+            marker.color.g = 1.0;
+            marker.color.b = 1.0;
+        }
+
+        pub_marker_->publish(marker);
     }
 
     std::string get_unit_string(int function, int scale, int measurement) {
