@@ -15,20 +15,25 @@ VLP-32C + IMU
     |
     v
 FAST-LIO                  -> /odometry_lio
-    |
+    |                         |
+    |                         v
+    |                     NDT localization       -> /odometry_map
     v
-NDT localization          -> /odometry_map
-    |
-    v
-FAR planner               -> /far_path
-    |
-    v
-Regulated pure pursuit    -> /cmd_vel
+terrain_analysis          -> /terrain_cloud
+    |                         |
+    +-------------------------+
+              |
+              v
+FAR planner                 -> /far_path
+              |
+              v
+Regulated pure pursuit      -> /cmd_vel
 ```
 
 Robot-specific launch files, maps, and configs live in `src/spot_navigation`.
-`fast_lio`, `ndt_localization`, `far_planner`, and `mpl_planner` are used as
-implementation packages. The active FAST-LIO configuration for this workflow is
+`fast_lio`, `terrain_analysis`, `ndt_localization`, `far_planner`, and
+`mpl_planner` are used as implementation packages. The active FAST-LIO and
+terrain cloud configuration for this workflow is
 `src/spot_navigation/config/lio_localization.yaml`.
 
 ## Repository Layout
