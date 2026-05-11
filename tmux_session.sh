@@ -84,7 +84,7 @@ tmux send-keys -t "$SESSION:topics.0" "./zenoh_host.sh"
 
 tmux split-window -t "$SESSION:topics" -v
 tmux send-keys -t "$SESSION:topics.1" "$SETUP" Enter
-tmux send-keys -t "$SESSION:topics.1" "ros2 bag record -a"
+tmux send-keys -t "$SESSION:topics.1" "ros2 bag record -a --max-bag-size 1073741824"
 
 tmux split-window -t "$SESSION:topics.1" -h
 tmux send-keys -t "$SESSION:topics.2" "$SETUP" Enter
