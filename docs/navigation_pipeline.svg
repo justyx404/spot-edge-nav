@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="520" viewBox="0 0 1080 520" role="img" aria-labelledby="title desc">
+  <title id="title">Spot edge navigation pipeline</title>
+  <desc id="desc">LiDAR and IMU feed FAST-LIO. FAST-LIO publishes odometry for NDT localization and a registered cloud for terrain analysis. NDT localization publishes odometry map, terrain analysis publishes terrain cloud, and both feed FAR planner. FAR planner publishes a path for regulated pure pursuit, which publishes cmd_vel.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #ffffff; }
+      .node { fill: #f8fafc; stroke: #334155; stroke-width: 1.8; rx: 8; }
+      .sensor { fill: #ecfeff; stroke: #0f766e; }
+      .topic { fill: #fff7ed; stroke: #c2410c; }
+      .label { fill: #0f172a; font-family: Inter, Arial, sans-serif; font-size: 17px; font-weight: 700; text-anchor: middle; }
+      .small { fill: #334155; font-family: Inter, Arial, sans-serif; font-size: 13px; text-anchor: middle; }
+      .edge { fill: none; stroke: #334155; stroke-width: 2; marker-end: url(#arrow); }
+      .lane { fill: #64748b; font-family: Inter, Arial, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1080" height="520"/>
+
+  <text class="lane" x="40" y="34">Odometry</text>
+  <rect class="node sensor" x="40" y="60" width="160" height="74"/>
+  <text class="label" x="120" y="92">LiDAR + IMU</text>
+  <text class="small" x="120" y="116">sensor input</text>
+
+  <rect class="node" x="250" y="60" width="160" height="74"/>
+  <text class="label" x="330" y="92">FAST-LIO</text>
+  <text class="small" x="330" y="116">state estimation</text>
+
+  <rect class="node topic" x="460" y="60" width="160" height="74"/>
+  <text class="label" x="540" y="92">/odometry_lio</text>
+  <text class="small" x="540" y="116">LIO odometry</text>
+
+  <rect class="node" x="670" y="60" width="160" height="74"/>
+  <text class="label" x="750" y="92">NDT</text>
+  <text class="small" x="750" y="116">localization</text>
+
+  <rect class="node topic" x="880" y="60" width="160" height="74"/>
+  <text class="label" x="960" y="92">/odometry_map</text>
+  <text class="small" x="960" y="116">map-frame odom</text>
+
+  <text class="lane" x="40" y="194">Terrain Cloud</text>
+  <rect class="node" x="250" y="220" width="160" height="74"/>
+  <text class="label" x="330" y="252">terrain_analysis</text>
+  <text class="small" x="330" y="276">cloud processing</text>
+
+  <rect class="node topic" x="460" y="220" width="160" height="74"/>
+  <text class="label" x="540" y="252">/terrain_cloud</text>
+  <text class="small" x="540" y="276">FAR cloud input</text>
+
+  <text class="lane" x="40" y="354">Planning And Control</text>
+  <rect class="node" x="460" y="380" width="160" height="74"/>
+  <text class="label" x="540" y="412">FAR planner</text>
+  <text class="small" x="540" y="436">visibility graph</text>
+
+  <rect class="node topic" x="670" y="380" width="160" height="74"/>
+  <text class="label" x="750" y="412">/far_path</text>
+  <text class="small" x="750" y="436">planned path</text>
+
+  <rect class="node" x="880" y="380" width="160" height="74"/>
+  <text class="label" x="960" y="405">Regulated</text>
+  <text class="label" x="960" y="428">pure pursuit</text>
+
+  <rect class="node topic" x="880" y="462" width="160" height="42"/>
+  <text class="label" x="960" y="489">/cmd_vel</text>
+
+  <path class="edge" d="M 200 97 H 250"/>
+  <path class="edge" d="M 410 97 H 460"/>
+  <path class="edge" d="M 620 97 H 670"/>
+  <path class="edge" d="M 830 97 H 880"/>
+
+  <path class="edge" d="M 330 134 V 220"/>
+  <path class="edge" d="M 410 257 H 460"/>
+  <path class="edge" d="M 540 294 V 380"/>
+  <path class="edge" d="M 960 134 V 336 H 580 V 380"/>
+
+  <path class="edge" d="M 620 417 H 670"/>
+  <path class="edge" d="M 830 417 H 880"/>
+  <path class="edge" d="M 960 454 V 462"/>
+</svg>

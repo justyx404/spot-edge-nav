@@ -10,25 +10,7 @@ operator can review them before pressing Enter.
 
 ## System Overview
 
-```text
-VLP-32C + IMU
-    |
-    v
-FAST-LIO                  -> /odometry_lio
-    |                         |
-    |                         v
-    |                     NDT localization       -> /odometry_map
-    v
-terrain_analysis          -> /terrain_cloud
-    |                         |
-    +-------------------------+
-              |
-              v
-FAR planner                 -> /far_path
-              |
-              v
-Regulated pure pursuit      -> /cmd_vel
-```
+![Spot edge navigation pipeline](docs/navigation_pipeline.svg)
 
 Robot-specific launch files, maps, and configs live in `src/spot_navigation`.
 `fast_lio`, `terrain_analysis`, `ndt_localization`, `far_planner`, and
