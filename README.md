@@ -24,6 +24,7 @@ terrain cloud configuration for this workflow is
 .
 |-- Dockerfile
 |-- docker-compose.yml
+|-- docker-compose.nvidia.yml
 |-- tmux_session.sh
 |-- zenoh_host.sh
 |-- zenoh_client.sh
@@ -71,10 +72,19 @@ sudo apt install python3-serial
 
 ### Docker
 
-Build and start the container from the repo root:
+Build and start the container from the repo root. The default Compose file does
+not require an NVIDIA GPU:
 
 ```bash
 docker compose up -d --build
+docker compose exec ros-humble-dev bash
+```
+
+On a machine with an NVIDIA GPU and the NVIDIA container runtime installed, use
+the NVIDIA overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d --build
 docker compose exec ros-humble-dev bash
 ```
 
@@ -193,8 +203,19 @@ rviz2
 Docker:
 
 ```bash
+xhost +local:docker
 cd /path/to/spot_ws
 docker compose up -d --build
+docker compose exec ros-humble-dev bash
+```
+
+If the laptop has an NVIDIA GPU and the NVIDIA container runtime installed,
+start the container with the NVIDIA overlay instead:
+
+```bash
+xhost +local:docker
+cd /path/to/spot_ws
+docker compose -f docker-compose.yml -f docker-compose.nvidia.yml up -d --build
 docker compose exec ros-humble-dev bash
 ```
 
@@ -216,11 +237,13 @@ tcp/192.168.80.100:7447
 If the robot host uses a different IP address, edit `zenoh_client.sh` and
 change the endpoint before sourcing it.
 
-If RViz cannot open from Docker on the laptop, allow local X11 access before
-starting the container:
+For Docker RViz, `xhost +local:docker` must be run on the laptop host terminal,
+not inside the container, before starting or entering the container.
+
+To revoke that X11 access later:
 
 ```bash
-xhost +local:docker
+xhost -local:docker
 ```
 
 ## Radio Receiver
