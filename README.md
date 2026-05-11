@@ -262,7 +262,24 @@ sudo udevadm trigger
 ls -l /dev/imu_usb /dev/radio_usb
 ```
 
-The default sensor launch uses those symlinks:
+## IMU Reconfiguration After Reboot
+
+The WIT IMU currently needs to be reconfigured after each robot host reboot,
+before starting the sensor drivers. This appears to be a device or vendor
+settings-persistence limitation, but the permanent-save behavior has not been
+fully investigated yet.
+
+The configuration script opens `/dev/imu_usb` at the default baud rate, sets the
+IMU output rate to 100 Hz, switches the IMU baud rate to 115200, and sends the
+save command:
+
+```bash
+python3 src/wit_ros2_imu/configure_imu.py
+```
+
+Run it from the active robot host runtime environment after `/dev/imu_usb`
+exists and before launching the sensor drivers. The default sensor launch uses
+the persistent `/dev/imu_usb` and `/dev/radio_usb` symlinks:
 
 ```bash
 ros2 launch spot_navigation sensors.launch.py radio_baud:=57600
