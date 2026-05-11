@@ -6,6 +6,7 @@ RUN apt-get update && \
     apt-get install -y \
         sudo \
         tmux \
+        python3-serial \
         python3-colcon-common-extensions \
         mesa-utils \
         libglpk-dev \

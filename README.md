@@ -1,131 +1,210 @@
 # Spot Edge Navigation
 
-<p align="center">
-  <img src="assets/spot_sensors.png" width="400" alt="Boston Dynamics Spot with custom sensor payload">
-</p>
+ROS 2 Humble workspace for running the Spot navigation stack from an onboard
+host machine, with remote monitoring over Zenoh.
 
-**[[Project Page]](https://g1y5x3.github.io/spot-edge-nav/) [[Paper]](#citation) [[arXiv]](#citation)**
+The current field workflow is centered around `tmux_session.sh`. It prepares
+separate panes for the robot driver, sensors, localization, planning, route
+management, Zenoh, and bag recording. Most commands are prefilled so the
+operator can review them before pressing Enter.
 
-A fully autonomous navigation stack for the Boston Dynamics Spot quadruped
-robot, designed to run entirely on a low-power edge computer (Intel NUC13,
-no GPU) in GPS-denied, communication-denied environments such as underground
-mines.
+## System Overview
 
-The system integrates LiDAR-inertial odometry, scan-matching localization
-against a prior map, terrain segmentation, visibility-graph global planning,
-and a velocity-regulated local path follower. After a single mapping pass,
-the robot can navigate to arbitrary goal locations within the known map
-without any learned components or network connectivity.
-
-## Demo
-
-| Mission 1 (Easy, ~11 m) | Mission 2 (Intermediate, ~18 m) |
-|:---:|:---:|
-| ![Mission 1](assets/mission1_sample1_5x.gif) | ![Mission 2](assets/mission2_sample1_5x.gif) |
-
-| Mission 3 (Deep, ~35 m) | Mission 4 (Return to Entrance) |
-|:---:|:---:|
-| ![Mission 3](assets/mission3_sample1_5x.gif) | ![Mission 4](assets/mission4_sample1_5x.gif) |
-
-## Architecture
-
-```
-VLP-16 + IMU
-     │
-     ▼
-  FAST-LIO2 (LiDAR-Inertial Odometry, 10 Hz)
-     │
-     ├──► NDT Localization (drift correction against prior map)
-     │         │
-     │         ▼
-     │    /odometry_map (global pose)
-     │
-     ├──► Terrain Analysis (PMF ground/obstacle segmentation)
-     │         │
-     │         ▼
-     │    /terrain_cloud (traversable points)
-     │
-     └──────────┐
-                ▼
-          FAR Planner (visibility-graph global planner, 2.5 Hz)
-                │
-                ▼
-       Regulated Pure Pursuit (local path follower)
-                │
-                ▼
-           /cmd_vel ──► Spot
+```text
+VLP-32C + IMU
+    |
+    v
+FAST-LIO                  -> /odometry_lio
+    |
+    v
+NDT localization          -> /odometry_map
+    |
+    v
+FAR planner               -> /far_path
+    |
+    v
+Regulated pure pursuit    -> /cmd_vel
 ```
 
-## Hardware
+Robot-specific launch files, maps, and configs live in `src/spot_navigation`.
+`fast_lio`, `ndt_localization`, `far_planner`, and `mpl_planner` are used as
+implementation packages. The active FAST-LIO configuration for this workflow is
+`src/spot_navigation/config/lio_localization.yaml`.
 
-| Component | Model | Notes |
-|-----------|-------|-------|
-| Robot | Boston Dynamics Spot | |
-| Compute | Intel NUC13ANHi7 | i7-1360P (12C/16T), 32 GB RAM, no discrete GPU |
-| LiDAR | Velodyne VLP-16 | 10 Hz, 360° FoV |
-| IMU | Yahboom | 100 Hz, serial 115200 baud |
-| Thermal | TOPDON TC001 | 30 Hz |
+## Repository Layout
 
-## Repository Structure
-
-```
+```text
 .
-├── src/
-│   ├── spot_navigation/    # Launch files, configs, goal publishers, benchmark scripts
-│   ├── fast_lio/           # FAST-LIO2 LiDAR-inertial odometry
-│   ├── ndt_localization/   # NDT scan matching against prior PCD map
-│   ├── terrain_analysis/   # PMF ground segmentation + ceiling filter
-│   ├── far_planner/        # Visibility-graph global planner
-│   ├── mpl_planner/        # Regulated Pure Pursuit local path follower
-│   └── velodyne/           # ROS 2 Velodyne VLP-16 driver
-├── assets/                 # Photos, demo videos, CAD files
-├── Dockerfile              # ROS 2 Humble container
-├── docker-compose.yml      # Container orchestration
-├── tmux_session.sh         # 3-window tmux layout for field deployment
-├── zenoh_host.sh           # Zenoh router (robot side) for remote RViz
-└── zenoh_client.sh         # Zenoh client (laptop side)
+|-- Dockerfile
+|-- docker-compose.yml
+|-- tmux_session.sh
+|-- zenoh_host.sh
+|-- zenoh_client.sh
+|-- radio_receiver.py
+|-- radio_sender.py
+`-- src/
+    |-- spot_navigation/    # Robot launch files, configs, maps, route manager
+    |-- fast_lio/           # LiDAR-inertial odometry executable
+    |-- ndt_localization/   # NDT map-frame localization
+    |-- terrain_analysis/   # Map and terrain cloud processing
+    |-- far_planner/        # Visibility-graph planner
+    |-- mpl_planner/        # Pure pursuit controller
+    |-- spot_ros2_driver/   # Spot ROS 2 driver
+    `-- velodyne/           # Velodyne driver packages
 ```
 
-## Setup
+## Docker Setup
 
-### Prerequisites
-
-- Docker and Docker Compose
-- (Optional) NVIDIA Container Toolkit for GPU passthrough
-
-### Build
+Build and start the container from the repo root:
 
 ```bash
-# Clone with all submodules
-git clone --recursive https://github.com/g1y5x3/spot-edge-nav.git
-cd spot-edge-nav
-
-# Build and start the Docker container
-docker compose up -d
+docker compose up -d --build
 docker compose exec ros-humble-dev bash
+```
 
-# Inside the container: build the workspace
-colcon build --cmake-args -DCMAKE_BUILD_TYPE=Release
+Inside the container:
+
+```bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
-### Persistent Serial Device Names
+The image includes `python3-serial` so `radio_receiver.py`,
+`radio_sender.py`, the radio bridge, and the serial IMU driver can import
+`serial`.
 
-The IMU and radio are connected as USB serial devices. To avoid `ttyUSB`
-ordering changes across reboots, this repo uses persistent udev symlinks:
+## Host Machine Workflow
 
-- udev rules: `src/spot_navigation/config/99-spot-serial.rules`
-- IMU default: `src/spot_navigation/launch/sensors.launch.py` uses `/dev/imu_usb`
-- radio default: `src/spot_navigation/launch/sensors.launch.py` uses `/dev/radio_usb`
+Use this flow from a remote laptop that SSHes into the robot host machine.
 
-Installed rules:
-
-```udev
-SUBSYSTEM=="tty", ENV{ID_SERIAL}=="Silicon_Labs_CP2102_USB_to_UART_Bridge_Controller_0001", SYMLINK+="imu_usb"
-SUBSYSTEM=="tty", ENV{ID_SERIAL}=="FTDI_FT232R_USB_UART_BG00JV76", SYMLINK+="radio_usb"
+```bash
+ssh spot@<robot-host-ip>
+cd /home/spot/spot_ws
+docker compose up -d
+docker compose exec ros-humble-dev bash
 ```
 
-Install them on the robot with:
+Inside the container, build if needed and export the Spot password:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+export BOSDYN_CLIENT_PASSWORD='<spot-password>'
+./tmux_session.sh
+```
+
+The tmux session creates three windows:
+
+```text
+hardware
+  pane 0: Spot driver command
+  pane 1: sensor drivers, IMU, OWON, radio bridge
+  pane 2: spare
+
+software
+  pane 0: LIO localization commands
+  pane 1: FAR planner commands
+  pane 2: route manager command
+
+topics
+  pane 0: Zenoh router command
+  pane 1: rosbag recorder command
+  pane 2: spare
+```
+
+Start the Zenoh router first from the `topics` window. For remote monitoring,
+replace the prefilled `./zenoh_host.sh` command with:
+
+```bash
+./zenoh_host.sh remote
+```
+
+Then start the robot driver, sensors, localization, planner, and route manager
+from their panes. The prefilled default workflow uses the microgrid prior map:
+
+```bash
+ros2 launch spot_navigation lio_localization.launch.py map_path:=.../microgrid_transformed.pcd
+ros2 launch spot_navigation far_planner.launch.py use_sim_time:=false load_prior_map:=true prior_map_path:=.../microgrid_transformed.vgh
+ros2 run spot_navigation route_manager --ros-args -p route_name:=midpoint
+```
+
+The localization and planner panes also keep the office prior-map and no-prior
+SLAM variants in shell history.
+
+The bag recorder pane uses ROS 2's default timestamped bag name and splits bag
+files at 1 GiB:
+
+```bash
+ros2 bag record -a --max-bag-size 1073741824
+```
+
+## Remote Visualization
+
+Run this on the remote laptop, not inside the SSH session to the robot host.
+The laptop needs Docker, the repo checkout, and network access to the robot host.
+
+```bash
+cd /path/to/spot_ws
+docker compose up -d --build
+docker compose exec ros-humble-dev bash
+```
+
+Inside the remote laptop container:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+source zenoh_client.sh
+rviz2
+```
+
+`zenoh_client.sh` currently connects to:
+
+```bash
+tcp/192.168.80.100:7447
+```
+
+If the robot host uses a different IP address, edit `zenoh_client.sh` and
+change the endpoint before sourcing it.
+
+If RViz cannot open from Docker on the laptop, allow local X11 access before
+starting the container:
+
+```bash
+xhost +local:docker
+```
+
+## Radio Receiver
+
+`radio_receiver.py` can be run on the machine connected to the receiving radio.
+Inside the Docker container:
+
+```bash
+python3 radio_receiver.py --port /dev/ttyUSB0 --baud 57600
+```
+
+Use the actual serial device path for the receiver. The container runs
+privileged through `docker-compose.yml`, so USB serial devices should be visible
+inside the container.
+
+## Persistent Serial Device Names
+
+The robot host uses udev symlinks so IMU and radio device names do not depend on
+`ttyUSB` ordering:
+
+```text
+/dev/imu_usb
+/dev/radio_usb
+```
+
+Rules are stored at:
+
+```text
+src/spot_navigation/config/99-spot-serial.rules
+```
+
+Install them on the robot host:
 
 ```bash
 sudo install -m 0644 src/spot_navigation/config/99-spot-serial.rules /etc/udev/rules.d/99-spot-serial.rules
@@ -134,74 +213,51 @@ sudo udevadm trigger
 ls -l /dev/imu_usb /dev/radio_usb
 ```
 
-These rules are expected to work across different machines as long as the same
-USB serial adapters are used. If the adapters are replaced, or if multiple
-devices expose the same USB identity, update the rule match fields accordingly.
-
-### Launch
-
-The navigation stack is launched in three layers:
+The default sensor launch uses those symlinks:
 
 ```bash
-# 1. Sensor drivers + static TF tree
-ros2 launch spot_navigation sensors.launch.py
-
-# 2. Localization: FAST-LIO2 + NDT + terrain analysis
-ros2 launch spot_navigation lio_localization.launch.py
-
-# 3. Planning: FAR Planner + Pure Pursuit
-ros2 launch spot_navigation far_planner.launch.py
+ros2 launch spot_navigation sensors.launch.py radio_baud:=57600
 ```
 
-Or use the tmux script for field deployment (sets up all windows with Zenoh
-middleware and workspace sourced):
+## Direct Launch Commands
+
+The tmux workflow is preferred, but the same stack can be launched manually
+inside the host container. Start Zenoh before the other ROS nodes because
+`zenoh_host.sh` intentionally stops existing ROS processes before launching the
+router.
 
 ```bash
-./tmux_session.sh
+export RMW_IMPLEMENTATION=rmw_zenoh_cpp
+source /opt/ros/humble/setup.bash
+source install/setup.bash
 ```
 
-### Remote Visualization (Zenoh)
-
-For remote RViz over WiFi (e.g., monitoring from a laptop outside the mine):
+Terminal 1:
 
 ```bash
-# On the robot
-./zenoh_host.sh          # default config
-./zenoh_host.sh remote   # downsampled for bandwidth-constrained links
-
-# On the client laptop
-source zenoh_client.sh
-rviz2
+./zenoh_host.sh remote
 ```
 
-## Sending Navigation Goals
-
-Manual goals can be sent from RViz with the `2D Goal Pose` tool, or by running
-the route manager with a route YAML.
+Terminal 2:
 
 ```bash
-# Run the queue-based route manager with a route file
-ros2 launch spot_navigation far_planner.launch.py \
-  route_manager:=true \
-  route_file:=/absolute/path/to/route.yaml
+ros2 launch spot_navigation sensors.launch.py radio_baud:=57600
 ```
 
-## Citation
+Terminal 3:
 
-If you find this work useful, please cite:
-
-```bibtex
-@misc{gao2026efficientautonomousnavigationquadruped,
-      title={Efficient Autonomous Navigation of a Quadruped Robot in Underground Mines on Edge Hardware},
-      author={Yixiang Gao and Kwame Awuah-Offei},
-      year={2026},
-      eprint={2603.04470},
-      archivePrefix={arXiv},
-      primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2603.04470},
-}
+```bash
+ros2 launch spot_navigation lio_localization.launch.py map_path:=/home/rosuser/ros2_ws/src/spot_navigation/map/microgrid_transformed.pcd
 ```
 
-## License
+Terminal 4:
 
-This project is licensed under the [MIT License](LICENSE).
+```bash
+ros2 launch spot_navigation far_planner.launch.py use_sim_time:=false load_prior_map:=true prior_map_path:=/home/rosuser/ros2_ws/src/spot_navigation/map/microgrid_transformed.vgh
+```
+
+Terminal 5:
+
+```bash
+ros2 run spot_navigation route_manager --ros-args -p route_name:=midpoint
+```
