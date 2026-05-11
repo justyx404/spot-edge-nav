@@ -343,8 +343,8 @@ private:
         if (is_voltage_reading && std::isfinite(value)) {
             if (value <= voltage_critical_threshold_) {
                 marker.color.r = 1.0;
-                marker.color.g = 0.1;
-                marker.color.b = 0.1;
+                marker.color.g = 0.8;
+                marker.color.b = 0.0;
             } else if (value <= voltage_warn_threshold_) {
                 marker.color.r = 1.0;
                 marker.color.g = 0.8;

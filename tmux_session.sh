@@ -19,8 +19,10 @@ SETUP="cd \"$WORKSPACE_DIR\" && export RMW_IMPLEMENTATION=rmw_zenoh_cpp && sourc
 # Common mission commands. The software panes seed both prior-map and no-prior
 # SLAM commands into shell history, then prefill the prior-map workflow.
 LIO_PRIOR_CMD="ros2 launch spot_navigation lio_localization.launch.py map_path:=$WORKSPACE_DIR/src/spot_navigation/map/microgrid_transformed.pcd"
+LIO_OFFICE_PRIOR_CMD="ros2 launch spot_navigation lio_localization.launch.py map_path:=$WORKSPACE_DIR/src/spot_navigation/map/office_2026_05_07_113224.pcd"
 LIO_SLAM_CMD="ros2 launch spot_navigation lio_slam.launch.py"
 FAR_PRIOR_CMD="ros2 launch spot_navigation far_planner.launch.py use_sim_time:=false load_prior_map:=true prior_map_path:=$WORKSPACE_DIR/src/spot_navigation/map/microgrid_transformed.vgh"
+FAR_OFFICE_PRIOR_CMD="ros2 launch spot_navigation far_planner.launch.py use_sim_time:=false load_prior_map:=true prior_map_path:=$WORKSPACE_DIR/src/spot_navigation/map/office_2026_05_07_113224.vgh"
 FAR_SLAM_CMD="ros2 launch spot_navigation far_planner.launch.py use_sim_time:=false load_prior_map:=false"
 
 add_history() {
@@ -55,12 +57,14 @@ tmux send-keys -t "$SESSION:hardware.2" "$SETUP" Enter
 tmux new-window -t "$SESSION" -n "software"
 tmux send-keys -t "$SESSION:software" "$SETUP" Enter
 add_history "$SESSION:software.0" "$LIO_PRIOR_CMD"
+add_history "$SESSION:software.0" "$LIO_OFFICE_PRIOR_CMD"
 add_history "$SESSION:software.0" "$LIO_SLAM_CMD"
 tmux send-keys -t "$SESSION:software.0" "$LIO_PRIOR_CMD"
 
 tmux split-window -t "$SESSION:software" -v
 tmux send-keys -t "$SESSION:software.1" "$SETUP" Enter
 add_history "$SESSION:software.1" "$FAR_PRIOR_CMD"
+add_history "$SESSION:software.1" "$FAR_OFFICE_PRIOR_CMD"
 add_history "$SESSION:software.1" "$FAR_SLAM_CMD"
 tmux send-keys -t "$SESSION:software.1" "$FAR_PRIOR_CMD"
 
