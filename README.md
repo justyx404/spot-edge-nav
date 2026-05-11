@@ -40,7 +40,36 @@ terrain cloud configuration for this workflow is
     `-- velodyne/           # Velodyne driver packages
 ```
 
-## Docker Setup
+## Runtime Options
+
+This workspace can run either natively on Ubuntu 22.04 with ROS 2 Humble, or
+inside the provided Docker container.
+
+Use native execution when the robot host or remote laptop already has Ubuntu
+22.04, ROS 2 Humble, and the required dependencies installed. Use Docker when
+the machine is not Ubuntu 22.04, does not have ROS 2 Humble installed, or you
+want a reproducible environment.
+
+## Build
+
+### Native Ubuntu 22.04 / ROS 2 Humble
+
+From the repo root:
+
+```bash
+source /opt/ros/humble/setup.bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+source install/setup.bash
+```
+
+Native installs need `pyserial` available as `serial` for the radio scripts and
+serial IMU driver:
+
+```bash
+sudo apt install python3-serial
+```
+
+### Docker
 
 Build and start the container from the repo root:
 
@@ -52,8 +81,8 @@ docker compose exec ros-humble-dev bash
 Inside the container:
 
 ```bash
-colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source /opt/ros/humble/setup.bash
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
 source install/setup.bash
 ```
 
@@ -61,22 +90,41 @@ The image includes `python3-serial` so `radio_receiver.py`,
 `radio_sender.py`, the radio bridge, and the serial IMU driver can import
 `serial`.
 
-## Host Machine Workflow
+## Robot Host Workflow
 
-Use this flow from a remote laptop that SSHes into the robot host machine.
+Use this flow from a remote laptop that SSHes into the robot host machine:
 
 ```bash
 ssh spot@<robot-host-ip>
 cd /home/spot/spot_ws
-docker compose up -d
-docker compose exec ros-humble-dev bash
 ```
 
-Inside the container, build if needed and export the Spot password:
+Then enter either the native ROS environment or the Docker container.
+
+Native:
 
 ```bash
 source /opt/ros/humble/setup.bash
 source install/setup.bash
+```
+
+Docker:
+
+```bash
+docker compose up -d
+docker compose exec ros-humble-dev bash
+```
+
+Inside the container:
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+```
+
+Start the field session:
+
+```bash
 export BOSDYN_CLIENT_PASSWORD='<spot-password>'
 ./tmux_session.sh
 ```
@@ -129,7 +177,20 @@ ros2 bag record -a --max-bag-size 1073741824
 ## Remote Visualization
 
 Run this on the remote laptop, not inside the SSH session to the robot host.
-The laptop needs Docker, the repo checkout, and network access to the robot host.
+The laptop needs the repo checkout and network access to the robot host. It may
+use either native ROS 2 Humble or the Docker container.
+
+Native:
+
+```bash
+cd /path/to/spot_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+source zenoh_client.sh
+rviz2
+```
+
+Docker:
 
 ```bash
 cd /path/to/spot_ws
@@ -165,13 +226,14 @@ xhost +local:docker
 ## Radio Receiver
 
 `radio_receiver.py` can be run on the machine connected to the receiving radio.
-Inside the Docker container:
+Run it from the active runtime environment:
 
 ```bash
 python3 radio_receiver.py --port /dev/ttyUSB0 --baud 57600
 ```
 
-Use the actual serial device path for the receiver. The container runs
+Use the actual serial device path for the receiver. Native setups need access
+to the serial device and `python3-serial` installed. The Docker container runs
 privileged through `docker-compose.yml`, so USB serial devices should be visible
 inside the container.
 
@@ -209,9 +271,9 @@ ros2 launch spot_navigation sensors.launch.py radio_baud:=57600
 ## Direct Launch Commands
 
 The tmux workflow is preferred, but the same stack can be launched manually
-inside the host container. Start Zenoh before the other ROS nodes because
-`zenoh_host.sh` intentionally stops existing ROS processes before launching the
-router.
+inside the active robot host runtime environment. Start Zenoh before the other
+ROS nodes because `zenoh_host.sh` intentionally stops existing ROS processes
+before launching the router.
 
 ```bash
 export RMW_IMPLEMENTATION=rmw_zenoh_cpp
@@ -234,13 +296,13 @@ ros2 launch spot_navigation sensors.launch.py radio_baud:=57600
 Terminal 3:
 
 ```bash
-ros2 launch spot_navigation lio_localization.launch.py map_path:=/home/rosuser/ros2_ws/src/spot_navigation/map/microgrid_transformed.pcd
+ros2 launch spot_navigation lio_localization.launch.py
 ```
 
 Terminal 4:
 
 ```bash
-ros2 launch spot_navigation far_planner.launch.py use_sim_time:=false load_prior_map:=true prior_map_path:=/home/rosuser/ros2_ws/src/spot_navigation/map/microgrid_transformed.vgh
+ros2 launch spot_navigation far_planner.launch.py use_sim_time:=false load_prior_map:=true
 ```
 
 Terminal 5:
