@@ -62,8 +62,8 @@
   <text class="label" x="960" y="405">Regulated</text>
   <text class="label" x="960" y="428">pure pursuit</text>
 
-  <rect class="node topic" x="880" y="462" width="160" height="42"/>
-  <text class="label" x="960" y="489">/cmd_vel</text>
+  <rect class="node topic" x="880" y="474" width="160" height="42"/>
+  <text class="label" x="960" y="501">/cmd_vel</text>
 
   <path class="edge" d="M 200 97 H 250"/>
   <path class="edge" d="M 410 97 H 460"/>
@@ -77,5 +77,5 @@
 
   <path class="edge" d="M 620 417 H 670"/>
   <path class="edge" d="M 830 417 H 880"/>
-  <path class="edge" d="M 960 454 V 462"/>
+  <path class="edge" d="M 960 454 V 474"/>
 </svg>
