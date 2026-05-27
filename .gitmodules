@@ -28,5 +28,5 @@
 	branch = ros2
 [submodule "src/spot_ros2_driver"]
 	path = src/spot_ros2_driver
-	url = git@github.com:justyx404/spot_ros2_driver.git
+	url = https://github.com/justyx404/spot_ros2_driver.git
 	branch = main
