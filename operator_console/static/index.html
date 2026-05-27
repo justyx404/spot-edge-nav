@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spot Operator Console</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111318;
+      color: #f3f5f7;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #111318;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #2b3038;
+      background: #171a21;
+    }
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 650;
+    }
+    main {
+      display: grid;
+      grid-template-columns: minmax(320px, 440px) 1fr;
+      gap: 16px;
+      padding: 16px;
+    }
+    section {
+      border: 1px solid #2b3038;
+      border-radius: 8px;
+      background: #171a21;
+      padding: 14px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 650;
+    }
+    .control-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .control-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid #2b3038;
+      border-radius: 8px;
+      background: #1d222b;
+    }
+    .control-row strong {
+      display: block;
+      font-size: 14px;
+    }
+    .control-row span {
+      display: block;
+      margin-top: 2px;
+      color: #aab2bf;
+      font-size: 12px;
+    }
+    button, select {
+      height: 36px;
+      border: 1px solid #3b4350;
+      border-radius: 6px;
+      background: #242b36;
+      color: #f3f5f7;
+      font: inherit;
+      font-size: 13px;
+    }
+    button {
+      min-width: 72px;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #2f6fed;
+      border-color: #2f6fed;
+    }
+    button.stop {
+      background: #7d2634;
+      border-color: #a8384a;
+    }
+    .status-list {
+      display: grid;
+      gap: 8px;
+    }
+    .status-item {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .pill {
+      width: fit-content;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #3b4350;
+      color: #d7dce3;
+    }
+    .pill.running {
+      background: #146c43;
+      color: #dcfce7;
+    }
+    .log {
+      height: calc(100vh - 170px);
+      min-height: 420px;
+      overflow: auto;
+      padding: 12px;
+      border-radius: 8px;
+      background: #090b0f;
+      color: #d7dce3;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+      .log {
+        height: 360px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Spot Operator Console</h1>
+    <div id="connection" class="pill">connecting</div>
+  </header>
+  <main>
+    <div class="control-grid">
+      <section>
+        <h2>Stack Controls</h2>
+        <div class="control-grid">
+          <div class="control-row">
+            <div>
+              <strong>IMU</strong>
+              <span>Configure and validate /dev/imu_usb at 115200</span>
+            </div>
+            <button class="primary" data-action="imu">Configure</button>
+            <button data-action="imu-test">Test</button>
+          </div>
+          <div class="control-row">
+            <div>
+              <strong>Zenoh</strong>
+              <span>Middleware router on the robot host</span>
+            </div>
+            <button class="primary" data-start="zenoh">Start</button>
+            <button class="stop" data-stop="zenoh">Stop</button>
+          </div>
+          <div class="control-row">
+            <div>
+              <strong>Sensors</strong>
+              <span>Sensor launch with radio bridge</span>
+            </div>
+            <button class="primary" data-start="sensors">Start</button>
+            <button class="stop" data-stop="sensors">Stop</button>
+          </div>
+          <div class="control-row">
+            <div>
+              <strong>Navigation</strong>
+              <span>Localization, planner, route manager</span>
+            </div>
+            <select id="nav-profile">
+              <option value="microgrid">microgrid</option>
+              <option value="office">office</option>
+              <option value="slam">slam</option>
+            </select>
+            <button class="primary" data-action="nav-start">Start</button>
+            <button class="stop" data-action="nav-stop">Stop</button>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2>Status</h2>
+        <div id="status" class="status-list"></div>
+      </section>
+    </div>
+    <section>
+      <h2>Logs</h2>
+      <div id="log" class="log"></div>
+    </section>
+  </main>
+  <script>
+    const logEl = document.querySelector("#log");
+    const statusEl = document.querySelector("#status");
+    const connectionEl = document.querySelector("#connection");
+
+    function appendLog(line) {
+      logEl.textContent += line + "\n";
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function postJson(url, body = {}) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        appendLog(`request failed: ${JSON.stringify(data)}`);
+      }
+      await refreshStatus();
+      return data;
+    }
+
+    async function refreshStatus() {
+      const response = await fetch("/api/status");
+      const data = await response.json();
+      const processes = data.processes || {};
+      const names = ["configure_imu", "test_imu", "zenoh", "sensors", "localization", "planner", "route_manager"];
+      statusEl.innerHTML = "";
+      for (const name of names) {
+        const item = processes[name] || {running: false, returncode: null};
+        const row = document.createElement("div");
+        row.className = "status-item";
+        const label = document.createElement("div");
+        label.textContent = name;
+        const state = document.createElement("div");
+        const pill = document.createElement("span");
+        pill.className = "pill" + (item.running ? " running" : "");
+        pill.textContent = item.running ? "running" : `stopped${item.returncode === null ? "" : " (" + item.returncode + ")"}`;
+        state.appendChild(pill);
+        row.append(label, state);
+        statusEl.appendChild(row);
+      }
+    }
+
+    document.addEventListener("click", async (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const startName = target.dataset.start;
+      const stopName = target.dataset.stop;
+      const action = target.dataset.action;
+      if (startName) {
+        await postJson(`/api/${startName}/start`);
+      } else if (stopName) {
+        await postJson(`/api/${stopName}/stop`);
+      } else if (action === "imu") {
+        await postJson("/api/imu/configure");
+      } else if (action === "imu-test") {
+        await postJson("/api/imu/test");
+      } else if (action === "nav-start") {
+        await postJson("/api/stack/navigation/start", {profile: document.querySelector("#nav-profile").value});
+      } else if (action === "nav-stop") {
+        await postJson("/api/stack/navigation/stop");
+      }
+    });
+
+    function connectLogs() {
+      const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+      const socket = new WebSocket(`${scheme}://${window.location.host}/api/logs/ws`);
+      socket.onopen = () => {
+        connectionEl.textContent = "connected";
+        connectionEl.className = "pill running";
+      };
+      socket.onmessage = (event) => appendLog(event.data);
+      socket.onclose = () => {
+        connectionEl.textContent = "reconnecting";
+        connectionEl.className = "pill";
+        setTimeout(connectLogs, 1500);
+      };
+    }
+
+    refreshStatus();
+    setInterval(refreshStatus, 2000);
+    connectLogs();
+  </script>
+</body>
+</html>
